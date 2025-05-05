@@ -1,21 +1,20 @@
-// Parameters
-// Use only from the Jenkins UI if you want to specify a custom branch of drake or drake-ci.
+// Define the job parameters.
 properties([
     parameters([
         string(name: 'drakeSha', defaultValue: 'master',
-          description: 'Commit SHA or branch name. ' \
-            'For pull requests, enter branch name <code>pr/1234/head</code> ' \
-            'or <code>pr/1234/merge</code> for pull request #1234. ' \
+          description: 'Commit SHA or branch name. ' +
+            'For pull requests, enter branch name <code>pr/1234/head</code> ' +
+            'or <code>pr/1234/merge</code> for pull request #1234. ' +
             'Defaults to <code>master</code>.'),
         choice(name: 'ciSha', defaultValue: 'main',
-          description: 'Commit SHA or branch name. ' \
-            'For pull requests, enter branch name <code>pr/1234/head</code> ' \
-            'or <code>pr/1234/merge</code> for pull request #1234. ' \
+          description: 'Commit SHA or branch name. ' +
+            'For pull requests, enter branch name <code>pr/1234/head</code> ' +
+            'or <code>pr/1234/merge</code> for pull request #1234. ' +
             'Defaults to <code>main</code>.'),
     ])
 ])
 
-// Defines the main pipeline.
+// Define the main pipeline.
 node(getNodeLabel()) {
   // We'll use our own checkout step below, since we have 
   // multiple repositories with a particular directory layout.
@@ -26,8 +25,10 @@ node(getNodeLabel()) {
       ansiColor('xterm') {
         timestamps {
           try {
-            if ("${env.JOB_NAME}".contains("continuous") || "${env.JOB_NAME}".contains("nightly")) {
-              // Ignore the branch parameters for production builds, always use master/main.
+            if ("${env.JOB_NAME}".contains("continuous") || 
+              "${env.JOB_NAME}".contains("nightly")) {
+              // Ignore the branch parameters for production builds,
+              // always use master/main.
               def scmVars = checkout()
             }
             else {
@@ -39,7 +40,8 @@ node(getNodeLabel()) {
             try {
               addCDashBadge()
               // Only send failure emails for production builds.
-              if ("${env.JOB_NAME}".contains("continuous") || "${env.JOB_NAME}".contains("nightly")) {
+              if ("${env.JOB_NAME}".contains("continuous") || 
+                "${env.JOB_NAME}".contains("nightly")) {
                 emailFailureResults()
               }
             } finally {
@@ -74,10 +76,30 @@ def getNodeLabel() {
 def checkout(String drakeSha = "master", String ciSha = "main") {
   def scmVars = null
   retry(4) {
-    scmVars = checkout([$class: 'GitSCM', branches: [[name: "${drakeSha}"]], extensions: [[$class: 'AuthorInChangelog'], [$class: 'CloneOption', honorRefspec: true, noTags: true], [$class: 'RelativeTargetDirectory', relativeTargetDir: 'src'], [$class: 'LocalBranch', localBranch: 'master']], userRemoteConfigs: [[credentialsId: 'ad794d10-9bc8-4a7a-a2f3-998af802cab0', name: 'origin', refspec: '+refs/heads/master:refs/remotes/origin/master', url: 'git@github.com:RobotLocomotion/drake.git']]])
+    scmVars = checkout([$class: 'GitSCM',
+      branches: [[name: "${drakeSha}"]],
+      extensions: [[$class: 'AuthorInChangelog'],
+        [$class: 'CloneOption', honorRefspec: true, noTags: true],
+        [$class: 'RelativeTargetDirectory', relativeTargetDir: 'src'],
+        [$class: 'LocalBranch', localBranch: 'master']],
+      userRemoteConfigs: [[
+        credentialsId: 'ad794d10-9bc8-4a7a-a2f3-998af802cab0',
+        name: 'origin',
+        refspec: '+refs/heads/master:refs/remotes/origin/master',
+        url: 'git@github.com:RobotLocomotion/drake.git']]])
   }
   retry(4) {
-    checkout([$class: 'GitSCM', branches: [[name: "${ciSha}"]], extensions: [[$class: 'AuthorInChangelog'], [$class: 'CloneOption', honorRefspec: true, noTags: true], [$class: 'RelativeTargetDirectory', relativeTargetDir: 'ci'], [$class: 'LocalBranch', localBranch: 'main']], userRemoteConfigs: [[credentialsId: 'ad794d10-9bc8-4a7a-a2f3-998af802cab0', name: 'origin', refspec: '+refs/heads/main:refs/remotes/origin/main', url: 'git@github.com:RobotLocomotion/drake-ci.git']]])
+    checkout([$class: 'GitSCM',
+      branches: [[name: "${ciSha}"]],
+      extensions: [[$class: 'AuthorInChangelog'],
+        [$class: 'CloneOption', honorRefspec: true, noTags: true],
+        [$class: 'RelativeTargetDirectory', relativeTargetDir: 'ci'],
+        [$class: 'LocalBranch', localBranch: 'main']],
+      userRemoteConfigs: [[
+        credentialsId: 'ad794d10-9bc8-4a7a-a2f3-998af802cab0',
+        name: 'origin',
+        refspec: '+refs/heads/main:refs/remotes/origin/main',
+        url: 'git@github.com:RobotLocomotion/drake-ci.git']]])
   }
   return scmVars
 }
@@ -85,9 +107,12 @@ def checkout(String drakeSha = "master", String ciSha = "main") {
 // Performs the main build step by calling into a drake-ci script.
 def doBuild(Map scmVars) {
   withCredentials([
-    sshUserPrivateKey(credentialsId: 'ad794d10-9bc8-4a7a-a2f3-998af802cab0', keyFileVariable: 'SSH_PRIVATE_KEY_FILE'),
-    string(credentialsId: 'e21b9517-8aa7-419e-8f25-19cd42e10f68', variable: 'DOCKER_USERNAME'),
-    file(credentialsId: '912dd413-d419-4760-b7ab-c132ab9e7c5e', variable: 'DOCKER_PASSWORD_FILE')
+    sshUserPrivateKey(credentialsId: 'ad794d10-9bc8-4a7a-a2f3-998af802cab0',
+      keyFileVariable: 'SSH_PRIVATE_KEY_FILE'),
+    string(credentialsId: 'e21b9517-8aa7-419e-8f25-19cd42e10f68',
+      variable: 'DOCKER_USERNAME'),
+    file(credentialsId: '912dd413-d419-4760-b7ab-c132ab9e7c5e',
+      variable: 'DOCKER_PASSWORD_FILE')
   ]) {
     withEnv(["GIT_COMMIT=${scmVars.GIT_COMMIT}"]) {
       sh "${env.WORKSPACE}/ci/ctest_driver_script_wrapper.bash"
@@ -107,7 +132,8 @@ def emailFailureResults() {
     }
     emailext (
       subject: "${subject}: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-      body: "See <${env.BUILD_URL}display/redirect?page=changes> and <${env.BUILD_URL}changes>",
+      body: "See <${env.BUILD_URL}display/redirect?page=changes> " +
+        "and <${env.BUILD_URL}changes>",
       to: '$DEFAULT_RECIPIENTS',
     )
   }
@@ -117,8 +143,10 @@ def emailFailureResults() {
 def addCDashBadge() {
   if (fileExists('CDASH')) {
     def cDashUrl = readFile 'CDASH'
-    addBadge icon: '/userContent/cdash.png', link: cDashUrl, text: 'View in CDash'
-    addSummary icon: '/userContent/cdash.png', link: cDashUrl, text: 'View in CDash'
+    addBadge icon: '/userContent/cdash.png',
+      link: cDashUrl, text: 'View in CDash'
+    addSummary icon: '/userContent/cdash.png',
+      link: cDashUrl, text: 'View in CDash'
   }
 }
 
