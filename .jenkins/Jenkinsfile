@@ -6,7 +6,7 @@ properties([
             'For pull requests, enter branch name <code>pr/1234/head</code> ' +
             'or <code>pr/1234/merge</code> for pull request #1234. ' +
             'Defaults to <code>master</code>.'),
-        choice(name: 'ciSha', defaultValue: 'main',
+        string(name: 'ciSha', defaultValue: 'main',
           description: 'Commit SHA or branch name. ' +
             'For pull requests, enter branch name <code>pr/1234/head</code> ' +
             'or <code>pr/1234/merge</code> for pull request #1234. ' +
