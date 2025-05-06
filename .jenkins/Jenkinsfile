@@ -194,7 +194,7 @@ def setBuildStatus(String message, String state) {
   def repoUrl = scm.getUserRemoteConfigs()[0].getUrl()
   step([
     $class: "GitHubCommitStatusSetter",
-    reposSource: [$class: "ManuallyEnteredRepositorySource", url: "${repoUrl}}"],
+    reposSource: [$class: "ManuallyEnteredRepositorySource", url: "${repoUrl}"],
     contextSource: [$class: "ManuallyEnteredCommitContextSource", context: "${env.JOB_NAME}"],
     // commitShaSource: [$class: "ManuallyEnteredShaSource", sha: "${params.drakeSha}"],
     errorHandlers: [[$class: "ChangingBuildStatusErrorHandler", result: "UNSTABLE"]],
