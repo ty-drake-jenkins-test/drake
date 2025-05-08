@@ -88,7 +88,7 @@ def checkout(String drakeSha = 'master', String ciSha = 'main') {
   retry(4) {
     scmVars = checkout([
       $class: 'GitSCM',
-      branches: scm.branches,
+      branches: [[name: "${env.CHANGE_BRANCH}"]],
       extensions: [[$class: 'AuthorInChangelog'],
         [$class: 'CloneOption', honorRefspec: true, noTags: true],
         [$class: 'RelativeTargetDirectory', relativeTargetDir: 'src'],
