@@ -9,6 +9,8 @@
 # Drake itself.
 cmake_minimum_required(VERSION 3.22)
 
+set(DUMMY_VAR 1)
+
 project(drake
   DESCRIPTION "Model-based design and verification for robotics"
   LANGUAGES C CXX
