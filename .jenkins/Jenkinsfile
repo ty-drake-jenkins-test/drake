@@ -30,12 +30,9 @@ node(getNodeLabel()) {
               // Use the ci branch parameter (defaults to main).
               scmVars = checkout("${params.ciSha}")
             }
-            // Commented now for quick testing.
-            // doBuild(scmVars)
+            doBuild(scmVars)
           } finally {
             try {
-              // TODO(tyler-yankee): Remove this later.
-              writeFile(file: "RESULT", text: "FAILURE")
               addCDashBadge()
               // Only send failure emails for production builds.
               if (isProduction()) {
