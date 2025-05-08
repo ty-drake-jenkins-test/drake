@@ -35,11 +35,6 @@ node(getNodeLabel()) {
               // Use the branch parameters if given; otherwise, default to
               // the GIT_COMMIT for this build for drake;
               // main for drake-ci.
-              println("Git commit: ${env.GIT_COMMIT}")
-              def drakeSha = "${env.GIT_COMMIT}"
-              if ("${params.drakeSha}" != 'master') {
-                drakeSha = params.drakeSha
-              }
               scmVars = checkout("${drakeSha}", "${params.ciSha}")
             }
             // Commented now for quick testing.
@@ -91,8 +86,9 @@ def isProduction() {
 def checkout(String drakeSha = 'master', String ciSha = 'main') {
   def scmVars = null
   retry(4) {
-    scmVars = checkout([$class: 'GitSCM',
-      branches: [[name: "${drakeSha}"]],
+    scmVars = checkout([
+      $class: 'GitSCM',
+      branches: scm.branches,
       extensions: [[$class: 'AuthorInChangelog'],
         [$class: 'CloneOption', honorRefspec: true, noTags: true],
         [$class: 'RelativeTargetDirectory', relativeTargetDir: 'src'],
