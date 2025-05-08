@@ -71,11 +71,10 @@ def isProduction() {
 }
 
 // Performs the checkout step for drake and drake-ci.
-// By default, uses drake/master and drake-ci/main,
-// but can use any commit sha or PR number as specified
-// in the parameters above.
-// Within the workspace, drake is cloned into `src` and
-// drake-ci is cloned into `ci`.
+// * drake: Clones into WORKSPACE/'src' and checks out the branch
+//   specified from the build.
+// * drake-ci: Clones into WORKSPACE/'ci' and performs a custom
+//   checkout of either 'main' or the parameter given above.
 def checkout(String ciSha = 'main') {
   def scmVars = null
   retry(4) {
@@ -83,7 +82,7 @@ def checkout(String ciSha = 'main') {
       // which will be 'master' for production builds or a merge commit
       // for PR builds.
       dir("${env.WORKSPACE}/src") {
-        checkout scm
+        scmVars = checkout scm
       }
   }
   retry(4) {
@@ -99,7 +98,6 @@ def checkout(String ciSha = 'main') {
         refspec: '+refs/heads/main:refs/remotes/origin/main',
         url: 'git@github.com:RobotLocomotion/drake-ci.git']]])
   }
-  println("git commit: ${env.GIT_COMMIT}")
   return scmVars
 }
 
@@ -113,7 +111,7 @@ def doBuild(Map scmVars) {
     file(credentialsId: '912dd413-d419-4760-b7ab-c132ab9e7c5e',
       variable: 'DOCKER_PASSWORD_FILE')
   ]) {
-    withEnv(["GIT_COMMIT=${env.GIT_COMMIT}"]) {
+    withEnv(["GIT_COMMIT=${scmVars.GIT_COMMIT}"]) {
       sh "${env.WORKSPACE}/ci/ctest_driver_script_wrapper.bash"
     }
   }
