@@ -1,6 +1,3 @@
-// Import utilities.
-@Library('utils')
-
 // Define the job parameters.
 properties([
     parameters([
@@ -14,6 +11,9 @@ properties([
 
 // Define the main pipeline.
 node(getNodeLabel()) {
+  // Import utilities.
+  library('utils')
+
   // Categorize this build.
   isProd = utils.isProduction()
 
