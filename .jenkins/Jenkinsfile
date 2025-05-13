@@ -15,31 +15,37 @@ node(getNodeLabel()) {
   // multiple repositories with a particular directory layout.
   skipDefaultCheckout()
 
+  // Load common functions.
+  utils = load("{env.WORKSPACE}/.jenkins/utils.groovy")
+  
+  // Categorize this build.
+  isProd = utils.isProduction()
+
   stage('test') {
     timeout(600) {
       ansiColor('xterm') {
         timestamps {
           try {
             def scmVars = null
-            if (isProduction()) {
+            if (isProd) {
               // Ignore the ci branch parameter for production builds,
               // always use main.
-              scmVars = checkout()
+              scmVars = utils.checkout()
             }
             else {
               // Use the ci branch parameter (defaults to main).
-              scmVars = checkout("${params.ciSha}")
+              scmVars = utils.checkout("${params.ciSha}")
             }
             doBuild(scmVars)
           } finally {
             try {
               addCDashBadge()
               // Only send failure emails for production builds.
-              if (isProduction()) {
-                emailFailureResults()
+              if (isProd) {
+                utils.emailFailureResults()
               }
             } finally {
-              cleanWorkspace()
+              utils.cleanWorkspace()
             }
           }
         }
@@ -61,43 +67,6 @@ def getNodeLabel() {
   }
 }
 
-// Returns true if this job is continuous or nightly.
-def isProduction() {
-  return ("${env.JOB_NAME}".contains("continuous") ||
-    "${env.JOB_NAME}".contains("nightly"))
-}
-
-// Performs the checkout step for drake and drake-ci.
-// * drake: Clones into WORKSPACE/'src' and checks out the branch
-//   specified from the build.
-// * drake-ci: Clones into WORKSPACE/'ci' and performs a custom
-//   checkout of either 'main' or the parameter given above.
-def checkout(String ciSha = 'main') {
-  def scmVars = null
-  retry(4) {
-      // Checkout into 'src' with the commit created by the job,
-      // which will be 'master' for production builds or a merge commit
-      // for PR builds.
-      dir("${env.WORKSPACE}/src") {
-        scmVars = checkout scm
-      }
-  }
-  retry(4) {
-    checkout([$class: 'GitSCM',
-      branches: [[name: "${ciSha}"]],
-      extensions: [[$class: 'AuthorInChangelog'],
-        [$class: 'CloneOption', honorRefspec: true, noTags: true],
-        [$class: 'RelativeTargetDirectory', relativeTargetDir: 'ci'],
-        [$class: 'LocalBranch', localBranch: 'main']],
-      userRemoteConfigs: [[
-        credentialsId: 'ad794d10-9bc8-4a7a-a2f3-998af802cab0',
-        name: 'origin',
-        refspec: '+refs/heads/main:refs/remotes/origin/main',
-        url: 'git@github.com:RobotLocomotion/drake-ci.git']]])
-  }
-  return scmVars
-}
-
 // Performs the main build step by calling into a drake-ci script.
 def doBuild(Map scmVars) {
   withCredentials([
@@ -114,27 +83,6 @@ def doBuild(Map scmVars) {
   }
 }
 
-// Sends an email to Drake developers when a build fails or is unstable.
-def emailFailureResults() {
-  if (fileExists('RESULT')) {
-    currentBuild.result = readFile 'RESULT'
-    if (currentBuild.result == 'FAILURE' || currentBuild.result == 'UNSTABLE') {
-      def subject = 'Build failed in Jenkins'
-      if (currentBuild.result == 'UNSTABLE') {
-        subject = 'Jenkins build is unstable'
-      }
-      emailext (
-        subject: "${subject}: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-        body: "See <${env.BUILD_URL}display/redirect?page=changes> " +
-          "and <${env.BUILD_URL}changes>",
-        // TODO(tyler-yankee): Bring back default recipients later.
-        // to: '$DEFAULT_RECIPIENTS',
-        to: 'tyler.yankee@kitware.com'
-      )
-    }
-  }
-}
-
 // Provides links to the results of the build via CDash.
 def addCDashBadge() {
   if (fileExists('CDASH')) {
@@ -143,15 +91,5 @@ def addCDashBadge() {
       link: cDashUrl, text: 'View in CDash'
     addSummary icon: '/userContent/cdash.png',
       link: cDashUrl, text: 'View in CDash'
-  }
-}
-
-// Deletes the workspace and tmp directories, for use at the end of a build.
-def cleanWorkspace() {
-  dir("${env.WORKSPACE}") {
-    deleteDir()
-  }
-  dir("${env.WORKSPACE}@tmp") {
-    deleteDir()
   }
 }
