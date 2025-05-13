@@ -11,11 +11,15 @@ properties([
 
 // Define the main pipeline.
 node(getNodeLabel()) {
+  // Use a custom checkout step below, since there are
+  // multiple repositories with a particular directory layout.
+  skipDefaultCheckout()
+
   // Import utilities.
   library('utils')
 
   // Categorize this build.
-  isProd = utils.isProduction()
+  def isProd = utils.isProduction()
 
   stage('test') {
     timeout(600) {
