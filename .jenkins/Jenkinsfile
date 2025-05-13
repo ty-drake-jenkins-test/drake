@@ -1,3 +1,6 @@
+// Import utilities.
+@Library('utils')
+
 // Define the job parameters.
 properties([
     parameters([
@@ -11,9 +14,6 @@ properties([
 
 // Define the main pipeline.
 node(getNodeLabel()) {
-  // Load common functions.
-  utils = load("{env.WORKSPACE}/.jenkins/utils.groovy")
-  
   // Categorize this build.
   isProd = utils.isProduction()
 
