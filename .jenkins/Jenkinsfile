@@ -7,6 +7,12 @@ properties([
             'or <code>pr/1234/merge</code> for pull request #1234. ' +
             'Defaults to <code>main</code>.'),
     ]),
+    buildDiscarder(
+      logRotator(
+        daysToKeepStr: '90',
+        artifactDaysToKeepStr: '90'
+      )
+    )
 ])
 
 // Define the main pipeline.
