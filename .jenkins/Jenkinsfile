@@ -17,10 +17,14 @@ node(getNodeLabel()) {
 
   // Import utilities.
   library identifier: 'utils@master', retriever: modernSCM(
-    [$class: 'GitSCMSource',
-    remote: 'https://github.com/ty-drake-jenkins-test/drake',
-    credentialsId: '5b9a4e7f-b57a-4692-95b1-6cc704c106fd',
-    libraryPath: '.jenkins/utils'])
+    scm: [
+      $class: 'GitSCMSource',
+      remote: 'https://github.com/ty-drake-jenkins-test/drake',
+      credentialsId: '5b9a4e7f-b57a-4692-95b1-6cc704c106fd',
+      traits: [gitBranchDiscovery()]
+    ],
+    libraryPath: '.jenkins/utils/'
+  )
 
   // Categorize this build.
   def isProd = utils.isProduction()
