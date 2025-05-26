@@ -1,109 +1,27 @@
 // Define the job parameters.
 properties([
-    parameters([
-        string(name: 'ciSha', defaultValue: 'main',
-          description: 'Commit SHA or branch name. ' +
-            'For pull requests, enter branch name <code>pr/1234/head</code> ' +
-            'or <code>pr/1234/merge</code> for pull request #1234. ' +
-            'Defaults to <code>main</code>.'),
-    ]),
-    buildDiscarder(
-      logRotator(
-        daysToKeepStr: '90',
-        artifactDaysToKeepStr: '90'
-      )
+  parameters([
+    string(name: 'deePR', defaultValue: 'main',
+      description: 'Pull request name. ' +
+        'For pull requests, enter project name <code>PR-1234</code> ' +
+        'for pull request #1234. Defaults to <code>main</code>.'),
+  ]),
+  buildDiscarder(
+    logRotator(
+      daysToKeepStr: '90',
+      artifactDaysToKeepStr: '90'
     )
+  )
 ])
 
-// Define the main pipeline.
-node(getNodeLabel()) {
-  // Use a custom checkout step below, since there are
-  // multiple repositories with a particular directory layout.
-  skipDefaultCheckout()
-
-  // Import utilities.
-  library identifier: 'utils@master', retriever: modernSCM(
-    scm: [
-      $class: 'GitSCMSource',
-      remote: 'https://github.com/ty-drake-jenkins-test/drake',
-      credentialsId: '5b9a4e7f-b57a-4692-95b1-6cc704c106fd',
-      traits: [gitBranchDiscovery()]
-    ],
-    libraryPath: '.jenkins/utils/'
-  )
-
-  // Categorize this build.
-  def isProd = utils.isProduction()
-
-  stage('test') {
-    timeout(600) {
-      ansiColor('xterm') {
-        timestamps {
-          try {
-            def scmVars = null
-            if (isProd) {
-              // Ignore the ci branch parameter for production builds,
-              // always use main.
-              scmVars = utils.checkout()
-            }
-            else {
-              // Use the ci branch parameter (defaults to main).
-              scmVars = utils.checkout("${params.ciSha}")
-            }
-            doBuild(scmVars)
-          } finally {
-            try {
-              addCDashBadge()
-              // Only send failure emails for production builds.
-              if (isProd) {
-                utils.emailFailureResults()
-              }
-            } finally {
-              utils.cleanWorkspace()
-            }
-          }
-        }
-      }
-    }
-  }
+environment {
+  EXPERIMENTAL = true
 }
 
-// Returns the node label from the job name.
-def getNodeLabel() {
-  def pattern = ~/^((linux|mac-arm)-[a-z]+(?:-unprovisioned)?)/
-  def match = "${env.JOB_NAME}" =~ pattern
-
-  if (match.find()) {
-    return match.group(1)
-  }
-  else {
-    return null
-  }
-}
-
-// Performs the main build step by calling into a drake-ci script.
-def doBuild(Map scmVars) {
-  withCredentials([
-    sshUserPrivateKey(credentialsId: 'ad794d10-9bc8-4a7a-a2f3-998af802cab0',
-      keyFileVariable: 'SSH_PRIVATE_KEY_FILE'),
-    string(credentialsId: 'e21b9517-8aa7-419e-8f25-19cd42e10f68',
-      variable: 'DOCKER_USERNAME'),
-    file(credentialsId: '912dd413-d419-4760-b7ab-c132ab9e7c5e',
-      variable: 'DOCKER_PASSWORD_FILE')
-  ]) {
-    withEnv(["GIT_COMMIT=${scmVars.GIT_COMMIT}"]) {
-      sh "${env.WORKSPACE}/ci/ctest_driver_script_wrapper.bash"
-    }
-  }
-}
-
-// Provides links to the results of the build via CDash.
-def addCDashBadge() {
-  if (fileExists('CDASH')) {
-    def cDashUrl = readFile 'CDASH'
-    addBadge icon: '/userContent/cdash.png',
-      link: cDashUrl, text: 'View in CDash'
-    addSummary icon: '/userContent/cdash.png',
-      link: cDashUrl, text: 'View in CDash'
-  }
-}
+def scmVars = checkout scm
+build(
+  job: "RobotLocomotion/drake-external-examples/${params.deePR}",
+  parameters: [
+    string(name: 'drakeSha', value: scmVars.GIT_COMMIT)
+  ]
+)
