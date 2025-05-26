@@ -18,10 +18,35 @@ environment {
   EXPERIMENTAL = true
 }
 
-def scmVars = checkout scm
+def scmVars = null
+node(getNodeLabel()) {
+  stage('drake-checkout') {
+    timeout(600) {
+      ansiColor('xterm') {
+        timestamps {
+          scmVars = checkout scm
+        }
+      }
+    }
+  }
+}
+
 build(
   job: "RobotLocomotion/drake-external-examples/${params.deePR}",
   parameters: [
     string(name: 'drakeSha', value: scmVars.GIT_COMMIT)
   ]
 )
+
+// Returns the node label from the job name.
+def getNodeLabel() {
+  def pattern = ~/^((linux|mac-arm)-[a-z]+(?:-unprovisioned)?)/
+  def match = "${env.JOB_NAME}" =~ pattern
+
+  if (match.find()) {
+    return match.group(1)
+  }
+  else {
+    return null
+  }
+}
